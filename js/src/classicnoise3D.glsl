@@ -1,20 +1,5 @@
-
-
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<title>My first three.js app</title>
-		<style>
-			body { margin: 0; }
-		</style>
-	</head>
-	<body>
-		<!-- Noise functions from https://github.com/ashima/webgl-noise -->
-
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.js"></script>
-		<script type="x-shader/x-vertex" id="vertexShader">
-			// GLSL textureless classic 3D noise "cnoise",
+//
+// GLSL textureless classic 3D noise "cnoise",
 // with an RSL-style periodic variant "pnoise".
 // Author:  Stefan Gustavson (stefan.gustavson@liu.se)
 // Version: 2011-10-11
@@ -190,60 +175,3 @@ float pnoise(vec3 P, vec3 rep)
   float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x); 
   return 2.2 * n_xyz;
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-varying vec2 vUv;
-varying float noise;			
-
-			float turbulence( vec3 p ) {
-
-				float w = 100.0;
-				float t = -.5;
-			  
-				for (float f = 1.0 ; f <= 2.0 ; f++ ){
-				  float power = pow( 2.0, f );
-				  t += abs( pnoise( vec3( power * p ), vec3( 10.0, 10.0, 10.0 ) ) / power );
-				}
-			  
-				return t;
-			  
-			  }
-
-			  
-			  void main() {
-			  
-				vUv = uv;
-			  
-				// get a turbulent 3d noise using the normal, normal to high freq
-				noise = -.10 * turbulence( .5 * normal );
-				// get a 3d noise using the position, low frequency
-				float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
-				// compose both noises
-				float displacement = - 10. * noise + b;
-			  
-				// move the position along the normal and transform it
-				vec3 newPosition = position + normal * displacement;
-				gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
-			  
-			  }
-		</script>
-		  
-		<script type="x-shader/x-vertex" id="fragmentShader">
-			varying vec2 vUv;
-			varying float noise;
-
-			void main() {
-
-			// compose the colour using the UV coordinate
-			// and modulate it with the noise like ambient occlusion
-			vec3 color = vec3( vUv * ( 1. - 2. * noise ), 0.0 );
-			gl_FragColor = vec4( color.rgb, 1.0 );
-
-			}
-		</script>
-		<script src="js/main.js">
-			
-		</script>
-	</body>
-</html>
