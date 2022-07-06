@@ -1,8 +1,97 @@
+// SHADERS
+
+// Earth
+function eartVertexShader() {
+    return `
+    
+    ${classic3DNoise()}
+    ${classicPerlinNoise()}
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    
+    varying vec2 vUv;
+    varying float noise;	
+    uniform float delta;
+    uniform float height;
+    uniform float radius;		
+    
+                float turbulence( vec3 p ) {
+    
+                    float w = 10.0;
+                    float t = .0;
+                  
+                    for (float f = 1.0 ; f <= 5.0 ; f++ ){
+                      float power = pow( 2.0, f );
+                      t +=  pnoise( vec3( power * p ), vec3( 10.0, 10.0, 10.0 ) ) / power ;
+                    }
+    
+                    if(t < .0) {
+                        t = 0.0;
+                    }
+                  
+                    return t;
+                  
+                  }
+    
+                  
+                  void main() {
+                  
+                    vUv = uv;
+                  
+                    // get a turbulent 3d noise using the normal, normal to high freq
+    
+                    noise = .02 * height * turbulence( normal );
+                    
+                    // get a 3d noise using the position, low frequency
+                    //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
+                    
+                    float displacement = 10.* noise;
+                  
+                    // move the position along the normal and transform it
+                    vec3 newPosition = position * radius + normal * displacement;
+    
+                    //Rotation
+                    vec3 p = newPosition.xyz;
+                    float new_x = p.x*cos(delta) - p.y*sin(delta);
+                    float new_y = p.y*cos(delta) + p.x*sin(delta);
+    
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
+                  
+                  }`;
+}
+
+function earthFragmentShader() {
+
+    return `varying vec2 vUv;
+    varying float noise;
+    uniform float delta;
+    
+
+    float random( vec3 scale, float seed ){
+        return fract( sin( dot( gl_FragCoord.xyz + seed, scale ) ) * 43758.5453 + seed ) ;
+    }
+
+    void main() {
+
+    float r = .1 * random( vec3( 12.9898, 78.233, 151.7182 ), 0.0 );
+
+    // compose the colour using the UV coordinate
+    // and modulate it with the noise like ambient occlusion
+    vec2 tPos = vec2( 0, -110.3 * noise + r );
+      vec4 color = vec4( noise*25.0, 1.0, 1.0, 1.0);
+    //vec4 color = vec4( 0.5 + noise*0, 1.0, 1.0, 1.0 );
+    gl_FragColor = vec4( color.rgb, 1.0 );
+    gl_FragColor.a = 1.0;
+
+    }`;
+
+}
+
 
 //Create a three.js scene
 const scene = new THREE.Scene();
 //Create a three.js camera(field of view, aspect ratio, near clipping plane, far clipping plane)
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 //Create a three.js renderer
 const renderer = new THREE.WebGLRenderer();
@@ -15,6 +104,7 @@ var start = Date.now();
 var customUniforms = {
     delta: { value: 0 },
     height: { value: 0 },
+    radius: { value: 1 },
 
 };
 
@@ -22,11 +112,11 @@ var customUniforms = {
 //The geometry is described by a radius and number of segments
 const geometry = new THREE.IcosahedronGeometry(1, 62);
 //Create a three.js shadermaterialn for the sphere
-var material = new THREE.ShaderMaterial( {
+var material = new THREE.ShaderMaterial({
     uniforms: customUniforms,
-    vertexShader: document.getElementById( 'vertexShader' ).textContent,
-    fragmentShader: document.getElementById( 'fragmentShader' ).textContent
-} );
+    vertexShader: eartVertexShader(),
+    fragmentShader: earthFragmentShader()
+});
 
 material.transparent = true;
 
@@ -34,9 +124,9 @@ material.transparent = true;
 
 
 //Create a three.js blue sphere mesh
-const sphere = new THREE.Mesh(geometry, material);
+const earth = new THREE.Mesh(geometry, material);
 //Add the sphere mesh to the scene
-scene.add(sphere);
+scene.add(earth);
 
 //Add light to the scene
 const light = new THREE.PointLight(0xffffff, 1, 100);
@@ -48,30 +138,32 @@ scene.add(light);
 camera.position.z = 5;
 
 //Controls to be added to the GUI
-var controls = {
+var earthControls = {
     height: 0,
     earthRadius: 1,
-    moonRadius: 0.5
+    radius: 6371000,
 }
 
 
 //GUI for the camera connected to sphere
 var gui = new dat.GUI();
 //Add option to change a value between 0 and 10 in the GUI
-var heightControls = gui.addFolder('Controls');
-heightControls.add(controls, 'height', 0.0, 10.0).name('Height').listen();
+var earthGUI = gui.addFolder('Earth');
+earthGUI.add(earthControls, 'height', 0.0, 10.0).name('Height').listen();
+earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 
 //Render the scene with a animate function
 function animate() {
-    
+
     //Animate the scene
     requestAnimationFrame(animate);
 
     //Spin the sphere mesh
+
     
-    //sphere.rotation.y += 0.01;
-    material.uniforms.delta.value = .00025 * Date.now() - start;
-    material.uniforms.height.value = controls.height;
+    material.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
+    material.uniforms.height.value = earthControls.height;
+    material.uniforms.radius.value = earthControls.radius / 6371000;
     //Render the scene
     renderer.render(scene, camera);
     console.log(material.uniforms.delta.value)
