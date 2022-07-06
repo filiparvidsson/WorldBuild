@@ -1,21 +1,4 @@
-
-
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<title>My first three.js app</title>
-		<style>
-			body { margin: 0; }
-		</style>
-	</head>
-	<body>
-		<!-- Noise functions from https://github.com/ashima/webgl-noise -->
-
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.js"></script>
-		<script type="x-shader/x-vertex" id="vertexShader">
-			// GLSL textureless classic 3D noise "cnoise",
+// GLSL textureless classic 3D noise "cnoise",
 // with an RSL-style periodic variant "pnoise".
 // Author:  Stefan Gustavson (stefan.gustavson@liu.se)
 // Version: 2011-10-11
@@ -196,21 +179,16 @@ float pnoise(vec3 P, vec3 rep)
 
 varying vec2 vUv;
 varying float noise;	
-uniform float delta;
-uniform float height;		
+uniform float delta;		
 
 			float turbulence( vec3 p ) {
 
 				float w = 10.0;
-				float t = .0;
+				float t = -.5;
 			  
 				for (float f = 1.0 ; f <= 5.0 ; f++ ){
 				  float power = pow( 2.0, f );
-				  t +=  pnoise( vec3( power * p ), vec3( 10.0, 10.0, 10.0 ) ) / power ;
-				}
-
-				if(t < .0) {
-					t = 0.0;
+				  t += abs( pnoise( vec3( power * p ), vec3( 10.0, 10.0, 10.0 ) ) / power );
 				}
 			  
 				return t;
@@ -224,46 +202,15 @@ uniform float height;
 			  
 				// get a turbulent 3d noise using the normal, normal to high freq
 
-				noise = .02 * height * turbulence( normal );
+				noise = -.02 * turbulence( normal*delta );
 				
 				// get a 3d noise using the position, low frequency
 				//float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
 				
-				float displacement = 10.* noise;
+				float displacement = - 10. * noise;
 			  
 				// move the position along the normal and transform it
 				vec3 newPosition = position + normal * displacement;
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
 			  
 			  }
-		</script>
-		  
-		<script type="x-shader/x-vertex" id="fragmentShader">
-
-			varying vec2 vUv;
-			varying float noise;
-			uniform float delta;
-
-			float random( vec3 scale, float seed ){
-				return fract( sin( dot( gl_FragCoord.xyz + seed, scale ) ) * 43758.5453 + seed ) ;
-			}
-
-			void main() {
-
-			float r = .1 * random( vec3( 12.9898, 78.233, 151.7182 ), 0.0 );
-
-			// compose the colour using the UV coordinate
-			// and modulate it with the noise like ambient occlusion
-			vec2 tPos = vec2( 0, -110.3 * noise + r );
-  			vec4 color = vec4( tPos, 0.5, 0.5);
-			//vec4 color = vec4( 0.5 + noise*0, 1.0, 1.0, 1.0 );
-			gl_FragColor = vec4( color.rgb, 1.0 );
-			gl_FragColor.a = 1.0;
-
-			}
-		</script>
-		<script src="js/main.js">
-			
-		</script>
-	</body>
-</html>
