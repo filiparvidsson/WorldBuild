@@ -13,19 +13,24 @@ function eartVertexShader() {
     varying float noise;	
     uniform float delta;
     uniform float height;
-    uniform float radius;		
+    uniform float radius;
+    uniform float numberOfOctaves;
+    uniform float waterLevel;	
+
+    varying float heightDisplacement;
+
     
                 float turbulence( vec3 p ) {
     
-                    float w = 10.0;
+                 
                     float t = .0;
                   
-                    for (float f = 1.0 ; f <= 5.0 ; f++ ){
+                    for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                       float power = pow( 2.0, f );
-                      t +=  pnoise( vec3( power * p ), vec3( 10.0, 10.0, 10.0 ) ) / power ;
+                      t +=  cnoise( vec3( power * p ) ) / power ;
                     }
     
-                    if(t < .0) {
+                    if(t < waterLevel) {
                         t = 0.0;
                     }
                   
@@ -40,12 +45,14 @@ function eartVertexShader() {
                   
                     // get a turbulent 3d noise using the normal, normal to high freq
     
-                    noise = .02 * height * turbulence( normal );
+                    noise = turbulence( normal );
                     
                     // get a 3d noise using the position, low frequency
                     //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
                     
-                    float displacement = 10.* noise;
+                    float displacement = height * noise;
+
+                    heightDisplacement = displacement;
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -64,6 +71,7 @@ function earthFragmentShader() {
 
     return `varying vec2 vUv;
     varying float noise;
+    varying float heightDisplacement;
     uniform float delta;
     
 
@@ -77,9 +85,22 @@ function earthFragmentShader() {
 
     // compose the colour using the UV coordinate
     // and modulate it with the noise like ambient occlusion
-    vec2 tPos = vec2( 0, -110.3 * noise + r );
-      vec4 color = vec4( noise*25.0, 1.0, 1.0, 1.0);
-    //vec4 color = vec4( 0.5 + noise*0, 1.0, 1.0, 1.0 );
+    //vec2 tPos = vec2( 0, -110.3 * noise + r );
+    vec4 color = vec4( noise * 10.0 , 1.0, 1.0, 1.0);
+
+    // set the output colour to the composed colour
+    // Palette from: https://www.schemecolor.com/earth-planet-colors.php
+   
+    if(heightDisplacement <= 0.0) {
+        color = vec4(0.235, 0.259, 0.345, 1.0);
+    }
+    else if(heightDisplacement > 0.0 && heightDisplacement <= 0.3) {
+        color = vec4(0.231, 0.365, 0.219, 1.0);
+    }
+    else {
+        color = vec4(0.572, 0.494, 0.467, 1.0);
+    }
+
     gl_FragColor = vec4( color.rgb, 1.0 );
     gl_FragColor.a = 1.0;
 
@@ -105,6 +126,8 @@ var customUniforms = {
     delta: { value: 0 },
     height: { value: 0 },
     radius: { value: 1 },
+    numberOfOctaves: { value: 5 },
+    waterLevel: { value: 0 },
 
 };
 
@@ -142,6 +165,8 @@ var earthControls = {
     height: 0,
     earthRadius: 1,
     radius: 6371000,
+    numberOfOctaves: 5,
+    moisture: 70
 }
 
 
@@ -151,6 +176,9 @@ var gui = new dat.GUI();
 var earthGUI = gui.addFolder('Earth');
 earthGUI.add(earthControls, 'height', 0.0, 10.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
+// Add number of octaves to the GUI which takes an int value
+earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
+earthGUI.add(earthControls, 'moisture', 0, 100).name(`Moisture %`).listen();
 
 
 // Physics functions
@@ -186,12 +214,14 @@ function animate() {
     //Spin the sphere mesh
     
     
-    material.uniforms.delta.value = earthSpeed*((Date.now() - start)/1000)*2*Math.PI/180;
+    material.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     material.uniforms.height.value = earthControls.height;
     material.uniforms.radius.value = earthControls.radius / 6371000;
+    material.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    material.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
     //Render the scene
     renderer.render(scene, camera);
-    console.log(earthSpeed)
+    console.log(material.uniforms.waterLevel.value)
 }
 
 animate();
