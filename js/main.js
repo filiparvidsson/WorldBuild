@@ -152,6 +152,31 @@ var earthGUI = gui.addFolder('Earth');
 earthGUI.add(earthControls, 'height', 0.0, 10.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 
+
+// Physics functions
+//Constants
+const earthDensity = 5510; // kg/m3
+const earthRotationSpeed = 464; // m/s
+
+// function to calculate the mass of a sphere with desnity and radius as inputs
+function calculateMass(density, radius) {
+    return (4 / 3) * Math.PI * Math.pow(radius, 3) * density;
+}
+
+var earthMass = calculateMass(earthDensity, earthControls.radius);
+
+const earthSpeedConstant = earthMass / earthRotationSpeed;
+
+// function that returns earth's rotationspeed with mass and constant as insputs
+function calculateRotationSpeed(mass, constant) {
+    return constant / mass;
+}
+
+var earthSpeed = calculateRotationSpeed(earthMass, earthSpeedConstant);
+
+
+
+
 //Render the scene with a animate function
 function animate() {
 
@@ -159,14 +184,14 @@ function animate() {
     requestAnimationFrame(animate);
 
     //Spin the sphere mesh
-
     
-    material.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
+    
+    material.uniforms.delta.value = earthSpeed*((Date.now() - start)/1000)*2*Math.PI/180;
     material.uniforms.height.value = earthControls.height;
     material.uniforms.radius.value = earthControls.radius / 6371000;
     //Render the scene
     renderer.render(scene, camera);
-    console.log(material.uniforms.delta.value)
+    console.log(earthSpeed)
 }
 
 animate();

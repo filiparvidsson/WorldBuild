@@ -18,6 +18,7 @@ Now, it spins 1 degree per second, meaning 360 seconds is one day.
 - The day goes 240 times faster at the moment
 
 - Rotation coefficient = 
+    - 
 
 #### Moon
 And for the moon
