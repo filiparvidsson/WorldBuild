@@ -20,6 +20,7 @@ Now, it spins 1 degree per second, meaning 360 seconds is one day.
 - Rotation coefficient = 
     - 
 
+
 #### Moon
 And for the moon
 - Moon density: 3340kg/m3
