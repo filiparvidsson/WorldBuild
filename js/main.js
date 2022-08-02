@@ -122,7 +122,10 @@ function cloudVertexShader() {
     varying vec2 vUv;
     varying float noise;	
     uniform float delta;
+
     float height = 0.2;
+    float offset = 2.0;
+
     uniform float radius;
     uniform float numberOfOctaves;
     uniform float waterLevel;	
@@ -137,7 +140,7 @@ function cloudVertexShader() {
                   
                     for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                       float power = pow( 2.0, f );
-                      t +=  cnoise( vec3( power * p + delta) ) / power ;
+                      t +=  cnoise( vec3( power * p + delta*10.0 + offset) ) / power ;
                     }
     
                     if(t < waterLevel) {
@@ -344,9 +347,17 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 
 //Create a three.js renderer
 const renderer = new THREE.WebGLRenderer();
+
+
 //Set the size of the renderer, use false to render at a lower resolution
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+// add some customization to controls
+controls.enableDamping = true;
+controls.dampingFactor = 0.25;
+
 
 //Uniforms for the shader
 var start = Date.now();
