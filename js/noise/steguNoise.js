@@ -184,8 +184,7 @@ function classicPerlinNoise() {
 }
 
 function cellularNoise() {
-
-  return `#version 120
+  return `
 
   // Cellular noise ("Worley noise") in 3D in GLSL.
   // Copyright (c) Stefan Gustavson 2011-04-19. All rights reserved.
@@ -193,10 +192,6 @@ function cellularNoise() {
   // See LICENSE file for details.
   // https://github.com/stegu/webgl-noise
   
-  // Modulo 289 without a division (only multiplications)
-  vec3 mod289(vec3 x) {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
-  }
   
   // Modulo 7 without a division
   vec3 mod7(vec3 x) {
@@ -372,6 +367,5 @@ function cellularNoise() {
     return sqrt(d11.xy); // F1, F2
   #endif
   }
-  `
-
+  `;
 }

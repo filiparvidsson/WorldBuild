@@ -97,10 +97,10 @@ function earthFragmentShader() {
         color = vec4(0.272, 0.294, 0.267, 1.0);
     }
     else if(heightDisplacement > 0.0 && heightDisplacement <= 0.3) {
-        color = vec4(0.231, 0.365, 0.219, 1.0);
+        color = vec4(0.231 + 0.1*heightDisplacement, 0.365 + 0.2*heightDisplacement, 0.219 + 0.2*heightDisplacement, 1.0);
     }
     else {
-        color = vec4(0.572, 0.494, 0.467, 1.0);
+        color = vec4(0.572 + 0.3*heightDisplacement, 0.494 + 0.3*heightDisplacement, 0.467 + 0.2*heightDisplacement, 1.0);
     }
 
     gl_FragColor = vec4( color.rgb, 1.0 );
@@ -116,6 +116,7 @@ function waterVertexShader() {
     
     ${classic3DNoise()}
     ${classicPerlinNoise()}
+    ${cellularNoise()}
     
     //////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -137,13 +138,13 @@ function waterVertexShader() {
                   
                     for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                       float power = pow( 2.0, f );
-                      t +=  cnoise( vec3( power * p) ) / power ;
+                      t +=  cellular( vec3( power * p + delta*3.0) ).x / power ;
                     }
     
                     // if(t < waterLevel) {
-                    //     t = 0.0;
+                        //t = 0.0;
                     // }
-                    t = 0.0;
+                    
                   
                     return t;
                   
@@ -204,11 +205,16 @@ function waterFragmentShader() {
     float colorDispConstant = 0.5;
     float colorDisplacement = r * colorDispConstant;
    
-    color = vec4(0.0, 0.0, 1.0, 1.0);
+    //if(heightDisplacement <= 0.5) {
+    color = vec4(0.2*heightDisplacement, 0.6*heightDisplacement, 1.0 - 0.6*heightDisplacement, 1.0);
+    // }
+    // else {
+    // color = vec4(0.0, 0.0, 0.8, 1.0);
+    // }
 
 
     gl_FragColor = vec4( color.rgb, 1.0 );
-    gl_FragColor.a = 1.0;
+    gl_FragColor.a = 1.0 - 0.1*heightDisplacement;
 
     }`;
 
@@ -373,7 +379,7 @@ function moonVertexShader() {
                     // get a turbulent 3d noise using the normal, normal to high freq
                     noise = turbulence( normal );
                     
-                    float displacement = noise * 0.2;
+                    float displacement = noise * 0.1;
 
                     heightDisplacement = noise;
                   
@@ -431,10 +437,10 @@ function moonFragmentShader() {
     // color = vec4(r, r, r, 1.0);
 
     if( heightDisplacement < -0.05) {
-        color = vec4(0.7, 0.7, 0.7, 1.0);
+        color = vec4(0.7 + 0.3*heightDisplacement, 0.7 + 0.3*heightDisplacement, 0.7 + 0.3*heightDisplacement, 1.0);
     }
     else {
-        color = vec4(0.5, 0.5, 0.5, 1.0);
+        color = vec4(0.5 - heightDisplacement, 0.5 - heightDisplacement, 0.5 - heightDisplacement, 1.0);
     }
 
     gl_FragColor = vec4( color.rgb, 1.0 );
@@ -652,6 +658,10 @@ function animate() {
     earthMaterial.uniforms.radius.value = earthControls.radius / 6371000;
     earthMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
     earthMaterial.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
+
+    //Water
+    waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
+
     //Cloads
     cloudMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     cloudMaterial.uniforms.height.value = earthControls.height + 0.1;
