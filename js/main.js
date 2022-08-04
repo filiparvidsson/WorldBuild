@@ -15,7 +15,7 @@ function earthVertexShader() {
     uniform float height;
     uniform float radius;
     uniform float numberOfOctaves;
-    uniform float waterLevel;	
+    uniform float offset;	
 
     varying float heightDisplacement;
 
@@ -27,7 +27,7 @@ function earthVertexShader() {
                   
                     for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                       float power = pow( 2.0, f );
-                      t +=  cnoise( vec3( power * p) ) / power ;
+                      t +=  cnoise( vec3( power * p + offset) ) / power ;
                     }
     
                     // if(t < waterLevel) {
@@ -125,7 +125,7 @@ function waterVertexShader() {
     varying float earthNoice;	
     varying float distanceToWater;
 
-
+    uniform float offset;
     uniform float earthHeight;
     uniform float delta;
     uniform float height;
@@ -148,7 +148,7 @@ function waterVertexShader() {
                 
                     for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                     float power = pow( 2.0, f );
-                    t +=  cnoise( vec3( power * p) ) / power ;
+                    t +=  cnoise( vec3( power * p + offset) ) / power ;
                     }
 
                     // if(t < waterLevel) {
@@ -300,12 +300,12 @@ function cloudVertexShader() {
                   
                     for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
                       float power = pow( 2.0, f );
-                      t +=  cnoise( vec3( power * p + delta*10.0 + offset) ) / power ;
+                      t +=  cnoise( vec3( power * p + delta*2.0 + offset) ) / power ;
                     }
     
-                    if(t < waterLevel) {
-                        t = 0.0;
-                    }
+                    // if(t < waterLevel) {
+                    //     t = 0.0;
+                    // }
                   
                     return t;
                   
@@ -325,15 +325,15 @@ function cloudVertexShader() {
                     
                     float displacement = height * noise;
 
-                    heightDisplacement = displacement;
+                    heightDisplacement = noise;
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
     
                     //Rotation
                     vec3 p = newPosition.xyz;
-                    float new_x = p.x*cos(delta*noise) - p.y*sin(delta*noise);
-                    float new_y = p.y*cos(delta*noise) + p.x*sin(delta*noise);
+                    float new_x = p.x;//*cos(delta*noise) - p.y*sin(delta*noise);
+                    float new_y = p.y;//*cos(delta*noise) + p.x*sin(delta*noise);
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
                   
@@ -367,13 +367,13 @@ function cloudFragmentShader() {
     float colorDisplacement = r * colorDispConstant;
    
     
-    color = vec4(1.0, 1.0, 1.0, 1.0);
+    color = vec4(1.0 - r*.5, 1.0 - r*.5, 1.0 - r*.5, 1.0 - r*.5);
     
     
 
-    gl_FragColor = vec4( color.rgb, 1.0 - (0.2 - heightDisplacement) );
+    gl_FragColor = vec4( color.rgb, (heightDisplacement - 0.1)*2.0 );
 
-    if( heightDisplacement < 0.06) {
+    if( heightDisplacement < 0.1) {
         gl_FragColor.a = 0.0;
     }
 
@@ -529,7 +529,7 @@ var customEarthUniforms = {
     height: { value: 0 },
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
-    waterLevel: { value: 0 },
+    offset: { value: 0 },
     waveIntensity: { value: 0 },
 
 };
@@ -539,6 +539,7 @@ var customWaterUniforms = {
     earthHeight: { value: 0 },
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
+    offset: { value: 0 },
     waterLevel: { value: 0 },
     cameraPositionX: { value: 0 },
     cameraPositionY: { value: 0 },
@@ -644,7 +645,7 @@ var earthControls = {
     height: 0.2,
     radius: 6371000,
     numberOfOctaves: 5,
-    moisture: 100,
+    offset: 0,
     waveIntensity: 0.0,
 }
 
@@ -662,7 +663,7 @@ earthGUI.add(earthControls, 'height', 0.0, 1.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
 earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
-earthGUI.add(earthControls, 'moisture', 0, 100).name(`Moisture %`).listen();
+earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
 //earthGUI.add(earthControls, 'waveIntensity', 0, 0.25).name(`Wave Intensity`).listen();
 
 var moonGUI = gui.addFolder('Moon');
@@ -705,13 +706,14 @@ function animate() {
     earthMaterial.uniforms.height.value = earthControls.height;
     earthMaterial.uniforms.radius.value = earthControls.radius / 6371000;
     earthMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
-    earthMaterial.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
+    earthMaterial.uniforms.offset.value = earthControls.offset;//(earthControls.moisture / 100) - 1;
 
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     waterMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
     waterMaterial.uniforms.earthHeight.value = earthControls.height;
-    //waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000) - 0.3*earthControls.waveIntensity;
+    waterMaterial.uniforms.offset.value = earthControls.offset;
+    waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
     //waterMaterial.uniforms.height.value = earthControls.waveIntensity;
 
     waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
@@ -734,7 +736,7 @@ function animate() {
 
     //Render the scene
     renderer.render(scene, camera);
-    console.log(earthMaterial.uniforms.waterLevel.value)
+    //console.log(earthMaterial.uniforms.waterLevel.value)
 }
 
 animate();
