@@ -59,8 +59,8 @@ function earthVertexShader() {
     
                     //Rotation
                     vec3 p = newPosition.xyz;
-                    float new_x = p.x*cos(delta) - p.y*sin(delta);
-                    float new_y = p.y*cos(delta) + p.x*sin(delta);
+                    float new_x = p.x;//*cos(delta) - p.y*sin(delta);
+                    float new_y = p.y;//*cos(delta) + p.x*sin(delta);
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
                   
@@ -94,13 +94,13 @@ function earthFragmentShader() {
     float colorDisplacement = r * colorDispConstant;
    
     if(heightDisplacement <= 0.0) {
-        color = vec4(0.272, 0.294, 0.267, 1.0);
+        color = vec4(0.272 + 0.2*heightDisplacement, 0.294 + 0.2*heightDisplacement, 0.267 + 0.2*heightDisplacement, 1.0);
     }
     else if(heightDisplacement > 0.0 && heightDisplacement <= 0.3) {
         color = vec4(0.231 + 0.1*heightDisplacement, 0.365 + 0.2*heightDisplacement, 0.219 + 0.2*heightDisplacement, 1.0);
     }
     else {
-        color = vec4(0.572 + 0.3*heightDisplacement, 0.494 + 0.3*heightDisplacement, 0.467 + 0.2*heightDisplacement, 1.0);
+        color = vec4(0.322 + 0.3*heightDisplacement, 0.334 + 0.3*heightDisplacement, 0.327 + 0.2*heightDisplacement, 1.0);
     }
 
     gl_FragColor = vec4( color.rgb, 1.0 );
@@ -126,12 +126,18 @@ function waterVertexShader() {
     uniform float height;
     uniform float radius;
     uniform float numberOfOctaves;
-    uniform float waterLevel;	
+    uniform float waterLevel;
+    
+    uniform float cameraPositionX;
+    uniform float cameraPositionY;
+    uniform float cameraPositionZ;
 
     varying float heightDisplacement;
 
+    varying float waterOpacity;
+
     
-                float turbulence( vec3 p ) {
+                float cellularTurbulence( vec3 p ) {
     
                  
                     float t = .0;
@@ -157,22 +163,24 @@ function waterVertexShader() {
                   
                     // get a turbulent 3d noise using the normal, normal to high freq
     
-                    noise = turbulence( normal );
+                    noise = cellularTurbulence( normal );
                     
                     // get a 3d noise using the position, low frequency
                     //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
                     
-                    float displacement = height * noise;
+                    float displacement = 0.1 * noise - 0.04;
 
                     heightDisplacement = noise;
+
+                    waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
     
                     //Rotation
                     vec3 p = newPosition.xyz;
-                    float new_x = p.x*cos(delta) - p.y*sin(delta);
-                    float new_y = p.y*cos(delta) + p.x*sin(delta);
+                    float new_x = p.x;//*cos(delta) - p.y*sin(delta);
+                    float new_y = p.y;//*cos(delta) + p.x*sin(delta);
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
                   
@@ -184,6 +192,7 @@ function waterFragmentShader() {
     return `varying vec2 vUv;
     varying float noise;
     varying float heightDisplacement;
+    varying float waterOpacity;
     uniform float delta;
     
 
@@ -214,7 +223,9 @@ function waterFragmentShader() {
 
 
     gl_FragColor = vec4( color.rgb, 1.0 );
-    gl_FragColor.a = 1.0 - 0.1*heightDisplacement;
+    //waterOpacity > 0.0 ? gl_FragColor.a = 1.0 : gl_FragColor.a = waterOpacity;
+    gl_FragColor.a = 1.0 + 0.7*waterOpacity;
+
 
     }`;
 
@@ -463,6 +474,9 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+//Set camera z-position to 5
+camera.position.z = 5;
+
 const controls = new THREE.OrbitControls( camera, renderer.domElement );
 // add some customization to controls
 controls.enableDamping = true;
@@ -477,6 +491,7 @@ var customEarthUniforms = {
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
+    waveIntensity: { value: 0 },
 
 };
 
@@ -486,15 +501,9 @@ var customWaterUniforms = {
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
-
-};
-
-var customWaterUniforms = {
-    delta: { value: 0 },
-    height: { value: 0 },
-    radius: { value: 1 },
-    numberOfOctaves: { value: 5 },
-    waterLevel: { value: 0 },
+    cameraPositionX: { value: 0 },
+    cameraPositionY: { value: 0 },
+    cameraPositionZ: { value: -5 },
 
 };
 
@@ -540,6 +549,7 @@ var waterMaterial = new THREE.ShaderMaterial({
 });
 
 waterMaterial.transparent = true;
+waterMaterial.side = THREE.DoubleSide;
 
 var cloudMaterial = new THREE.ShaderMaterial({
     uniforms: customCloudUniforms,
@@ -590,15 +600,13 @@ light.position.set(10, 0, 10);
 scene.add(light);
 
 
-//Set camera z-position to 5
-camera.position.z = 5;
-
 //Controls to be added to the GUI
 var earthControls = {
     height: 0.2,
     radius: 6371000,
     numberOfOctaves: 5,
-    moisture: 100
+    moisture: 100,
+    waveIntensity: 0.0,
 }
 
 var moonControls = {
@@ -616,6 +624,7 @@ earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
 earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 earthGUI.add(earthControls, 'moisture', 0, 100).name(`Moisture %`).listen();
+//earthGUI.add(earthControls, 'waveIntensity', 0, 0.25).name(`Wave Intensity`).listen();
 
 var moonGUI = gui.addFolder('Moon');
 moonGUI.add(moonControls, 'radius', 1037400, 2337400).name('Radius').listen();
@@ -661,6 +670,14 @@ function animate() {
 
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
+    waterMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    //waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000) - 0.3*earthControls.waveIntensity;
+    //waterMaterial.uniforms.height.value = earthControls.waveIntensity;
+
+    waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
+    waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
+    waterMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
+
 
     //Cloads
     cloudMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
