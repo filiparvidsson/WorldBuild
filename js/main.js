@@ -121,7 +121,12 @@ function waterVertexShader() {
     //////////////////////////////////////////////////////////////////////////////////////////////
     
     varying vec2 vUv;
-    varying float noise;	
+    varying float noise;
+    varying float earthNoice;	
+    varying float distanceToWater;
+
+
+    uniform float earthHeight;
     uniform float delta;
     uniform float height;
     uniform float radius;
@@ -135,6 +140,24 @@ function waterVertexShader() {
     varying float heightDisplacement;
 
     varying float waterOpacity;
+
+                float turbulence( vec3 p ) {
+                
+                            
+                    float t = .0;
+                
+                    for (float f = 1.0 ; f <= numberOfOctaves ; f++ ){
+                    float power = pow( 2.0, f );
+                    t +=  cnoise( vec3( power * p) ) / power ;
+                    }
+
+                    // if(t < waterLevel) {
+                    //     t = 0.0;
+                    // }
+                
+                    return t;
+                
+                }
 
     
                 float cellularTurbulence( vec3 p ) {
@@ -164,11 +187,15 @@ function waterVertexShader() {
                     // get a turbulent 3d noise using the normal, normal to high freq
     
                     noise = cellularTurbulence( normal );
+
+                    earthNoice = turbulence( normal ) * earthHeight;
                     
                     // get a 3d noise using the position, low frequency
                     //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
                     
-                    float displacement = 0.1 * noise - 0.04;
+                    float displacement = 0.01 * noise;
+
+                    distanceToWater = earthNoice - displacement;
 
                     heightDisplacement = noise;
 
@@ -193,6 +220,7 @@ function waterFragmentShader() {
     varying float noise;
     varying float heightDisplacement;
     varying float waterOpacity;
+    varying float distanceToWater;
     uniform float delta;
     
 
@@ -215,16 +243,27 @@ function waterFragmentShader() {
     float colorDisplacement = r * colorDispConstant;
    
     //if(heightDisplacement <= 0.5) {
-    color = vec4(0.2*heightDisplacement, 0.6*heightDisplacement, 1.0 - 0.6*heightDisplacement, 1.0);
+    
+
+    if(distanceToWater > -0.005) {
+        color = vec4(0.5*heightDisplacement, 0.7*heightDisplacement, 1.0 - 0.2*heightDisplacement, 1.0);
+        gl_FragColor = vec4( color.rgb, 1.0 );
+        gl_FragColor.a = 1.0 + 0.3*waterOpacity;
+    }
+    else {
+        color = vec4(0.2*heightDisplacement, 0.6*heightDisplacement, 1.0 - 0.6*heightDisplacement, 1.0);
+        gl_FragColor = vec4( color.rgb, 1.0 );
+        gl_FragColor.a = 1.0 + 0.7*waterOpacity;
+    }
     // }
     // else {
     // color = vec4(0.0, 0.0, 0.8, 1.0);
     // }
 
 
-    gl_FragColor = vec4( color.rgb, 1.0 );
+    
     //waterOpacity > 0.0 ? gl_FragColor.a = 1.0 : gl_FragColor.a = waterOpacity;
-    gl_FragColor.a = 1.0 + 0.7*waterOpacity;
+    
 
 
     }`;
@@ -497,7 +536,7 @@ var customEarthUniforms = {
 
 var customWaterUniforms = {
     delta: { value: 0 },
-    height: { value: 0 },
+    earthHeight: { value: 0 },
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
@@ -671,6 +710,7 @@ function animate() {
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     waterMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    waterMaterial.uniforms.earthHeight.value = earthControls.height;
     //waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000) - 0.3*earthControls.waveIntensity;
     //waterMaterial.uniforms.height.value = earthControls.waveIntensity;
 
