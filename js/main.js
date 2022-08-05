@@ -199,7 +199,7 @@ function waterVertexShader() {
                     // get a 3d noise using the position, low frequency
                     //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
                     
-                    float displacement = 0.01 * noise;
+                    float displacement = (0.01 + height) * noise;
 
                     distanceToWater = earthNoice - displacement;
 
@@ -559,6 +559,7 @@ var customEarthUniforms = {
 var customWaterUniforms = {
     delta: { value: 0 },
     earthHeight: { value: 0 },
+    height: { value: 0 },
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     offset: { value: 0 },
@@ -689,7 +690,7 @@ earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
 earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
-//earthGUI.add(earthControls, 'waveIntensity', 0, 0.25).name(`Wave Intensity`).listen();
+earthGUI.add(earthControls, 'waveIntensity', -0.25, 0.25).name(`Flooding`).listen();
 
 var moonGUI = gui.addFolder('Moon');
 moonGUI.add(moonControls, 'radius', 1037400, 2337400).name('Radius').listen();
@@ -739,7 +740,7 @@ function animate() {
     waterMaterial.uniforms.earthHeight.value = earthControls.height;
     waterMaterial.uniforms.offset.value = earthControls.offset;
     waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
-    //waterMaterial.uniforms.height.value = earthControls.waveIntensity;
+    waterMaterial.uniforms.height.value = earthControls.waveIntensity;
 
     waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
     waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
