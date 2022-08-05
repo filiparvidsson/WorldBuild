@@ -52,7 +52,7 @@ function earthVertexShader() {
                     
                     float displacement = height * noise;
 
-                    heightDisplacement = noise;
+                    heightDisplacement = displacement;
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -93,14 +93,20 @@ function earthFragmentShader() {
     float colorDispConstant = 0.5;
     float colorDisplacement = r * colorDispConstant;
    
-    if(heightDisplacement <= 0.0) {
-        color = vec4(0.272 + 0.2*heightDisplacement, 0.294 + 0.2*heightDisplacement, 0.267 + 0.2*heightDisplacement, 1.0);
+    if(heightDisplacement <= 0.002) {
+        color = vec4(0.272 + 0.2*noise, 0.294 + 0.2*noise, 0.267 + 0.2*noise, 1.0);
     }
-    else if(heightDisplacement > 0.0 && heightDisplacement <= 0.3) {
-        color = vec4(0.231 + 0.1*heightDisplacement, 0.365 + 0.2*heightDisplacement, 0.219 + 0.2*heightDisplacement, 1.0);
+    else if(heightDisplacement > 0.002 && heightDisplacement <= 0.01) {
+        color = vec4(0.65 + 0.7*noise, 0.60 + 0.7*noise, 0.44 + 0.4*noise, 1.0);
+    }
+    else if(heightDisplacement > 0.01 && heightDisplacement <= 0.07) {
+        color = vec4(0.231 + 0.1*noise, 0.365 + 0.2*noise, 0.219 + 0.2*noise, 1.0);
+    }
+    else if(heightDisplacement > 0.07 && heightDisplacement <= 0.09) {
+        color = vec4(0.322 + 0.2*noise, 0.334 + 0.2*noise, 0.327 + 0.2*noise, 1.0);
     }
     else {
-        color = vec4(0.322 + 0.3*heightDisplacement, 0.334 + 0.3*heightDisplacement, 0.327 + 0.2*heightDisplacement, 1.0);
+        color = vec4(0.622 + 0.4*noise, 0.634 + 0.4*noise, 0.627 + 0.4*noise, 1.0);
     }
 
     gl_FragColor = vec4( color.rgb, 1.0 );
@@ -290,7 +296,13 @@ function cloudVertexShader() {
     uniform float numberOfOctaves;
     uniform float waterLevel;	
 
+    uniform float cameraPositionX;
+    uniform float cameraPositionY;
+    uniform float cameraPositionZ;
+
     varying float heightDisplacement;
+
+    varying float cloudCosAngle;
 
     
                 float turbulence( vec3 p ) {
@@ -326,6 +338,8 @@ function cloudVertexShader() {
                     float displacement = height * noise;
 
                     heightDisplacement = noise;
+
+                    cloudCosAngle = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal);
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -345,6 +359,7 @@ function cloudFragmentShader() {
     return `varying vec2 vUv;
     varying float noise;
     varying float heightDisplacement;
+    varying float cloudCosAngle;
     uniform float delta;
     
 
@@ -367,15 +382,22 @@ function cloudFragmentShader() {
     float colorDisplacement = r * colorDispConstant;
    
     
-    color = vec4(1.0 - r*.5, 1.0 - r*.5, 1.0 - r*.5, 1.0 - r*.5);
+
     
     
 
     gl_FragColor = vec4( color.rgb, (heightDisplacement - 0.1)*2.0 );
 
+    
+
     if( heightDisplacement < 0.1) {
-        gl_FragColor.a = 0.0;
+        gl_FragColor.a = heightDisplacement*0.2 - 0.15;
     }
+
+    // if(cloudCosAngle > 0.0) {
+    //     gl_FragColor.a = 1.0;
+    // }
+
 
     }`;
 
@@ -553,6 +575,9 @@ var customCloudUniforms = {
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
+    cameraPositionX: { value: 0 },
+    cameraPositionY: { value: 0 },
+    cameraPositionZ: { value: -5 },
 
 };
 
@@ -724,9 +749,13 @@ function animate() {
     //Cloads
     cloudMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     cloudMaterial.uniforms.height.value = earthControls.height + 0.1;
-    cloudMaterial.uniforms.radius.value = (earthControls.radius / 6371000) + 0.05;
+    cloudMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
     cloudMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
     cloudMaterial.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
+
+    cloudMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
+    cloudMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
+    cloudMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
 
     //Moon
     moonMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
