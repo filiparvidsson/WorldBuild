@@ -15,9 +15,13 @@ function earthVertexShader() {
     uniform float height;
     uniform float radius;
     uniform float numberOfOctaves;
-    uniform float offset;	
+    uniform float offset;
+    uniform float topologicalOffset;
+    uniform float topologicalOffsetStrength;	
 
     varying float heightDisplacement;
+
+    varying float colorDisplacement;
 
     
                 float turbulence( vec3 p ) {
@@ -46,6 +50,9 @@ function earthVertexShader() {
                     // get a turbulent 3d noise using the normal, normal to high freq
     
                     noise = turbulence( normal );
+
+                    colorDisplacement = turbulence( normal + vec3(topologicalOffset, topologicalOffset, topologicalOffset) );
+                    
                     
                     // get a 3d noise using the position, low frequency
                     //float b = 5.0 * pnoise( 0.05 * position, vec3( 100.0 ) );
@@ -53,6 +60,8 @@ function earthVertexShader() {
                     float displacement = height * noise;
 
                     heightDisplacement = displacement;
+
+                    colorDisplacement = (1.0-topologicalOffsetStrength)*heightDisplacement + topologicalOffsetStrength*colorDisplacement;
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -73,6 +82,7 @@ function earthFragmentShader() {
     varying float noise;
     varying float heightDisplacement;
     uniform float delta;
+    varying float colorDisplacement;
     
 
     float random( vec3 scale, float seed ){
@@ -90,19 +100,19 @@ function earthFragmentShader() {
 
     // set the output colour to the composed colour
     // Palette from: https://www.schemecolor.com/earth-planet-colors.php
-    float colorDispConstant = 0.5;
-    float colorDisplacement = r * colorDispConstant;
+    // float colorDispConstant = 0.5;
+    // float colorDisplacement = r * colorDispConstant;
    
-    if(heightDisplacement <= 0.002) {
+    if(colorDisplacement <= 0.002) {
         color = vec4(0.272 + 0.2*noise, 0.294 + 0.2*noise, 0.267 + 0.2*noise, 1.0);
     }
-    else if(heightDisplacement > 0.002 && heightDisplacement <= 0.01) {
+    else if(colorDisplacement > 0.002 && colorDisplacement <= 0.01) {
         color = vec4(0.65 + 0.7*noise, 0.60 + 0.7*noise, 0.44 + 0.4*noise, 1.0);
     }
-    else if(heightDisplacement > 0.01 && heightDisplacement <= 0.07) {
+    else if(colorDisplacement> 0.01 && colorDisplacement <= 0.07) {
         color = vec4(0.231 + 0.1*noise, 0.365 + 0.2*noise, 0.219 + 0.2*noise, 1.0);
     }
-    else if(heightDisplacement > 0.07 && heightDisplacement <= 0.09) {
+    else if(colorDisplacement> 0.07 && colorDisplacement <= 0.09) {
         color = vec4(0.322 + 0.2*noise, 0.334 + 0.2*noise, 0.327 + 0.2*noise, 1.0);
     }
     else {
@@ -553,6 +563,8 @@ var customEarthUniforms = {
     numberOfOctaves: { value: 5 },
     offset: { value: 0 },
     waveIntensity: { value: 0 },
+    topologicalOffset: { value: 0 },
+    topologicalOffsetStrength: { value: 0 },
 
 };
 
@@ -673,6 +685,8 @@ var earthControls = {
     numberOfOctaves: 5,
     offset: 0,
     waveIntensity: 0.0,
+    topologicalOffset: 0.0,
+    topologicalOffsetStrength: 0.0,
 }
 
 var moonControls = {
@@ -691,6 +705,8 @@ earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
 earthGUI.add(earthControls, 'waveIntensity', -0.25, 0.25).name(`Flooding`).listen();
+earthGUI.add(earthControls, 'topologicalOffset', 0, 5).name(`Topological Offset`).listen();
+earthGUI.add(earthControls, 'topologicalOffsetStrength', 0, 1).name(`T.O Strength`).listen();
 
 var moonGUI = gui.addFolder('Moon');
 moonGUI.add(moonControls, 'radius', 1037400, 2337400).name('Radius').listen();
@@ -733,6 +749,8 @@ function animate() {
     earthMaterial.uniforms.radius.value = earthControls.radius / 6371000;
     earthMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
     earthMaterial.uniforms.offset.value = earthControls.offset;//(earthControls.moisture / 100) - 1;
+    earthMaterial.uniforms.topologicalOffset.value = earthControls.topologicalOffset;
+    earthMaterial.uniforms.topologicalOffsetStrength.value = earthControls.topologicalOffsetStrength;
 
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
