@@ -428,6 +428,7 @@ function moonVertexShader() {
     uniform float radius;
     uniform float craterLevel;
     uniform float numberOfOctaves;	
+    uniform float distanceToEarth;
 
     varying float heightDisplacement;
 
@@ -464,9 +465,11 @@ function moonVertexShader() {
                     float displacement = noise * 0.1;
 
                     heightDisplacement = noise;
+
+                    vec3 distance = vec3(distanceToEarth, 0.0, 0.0);
                   
                     // move the position along the normal and transform it
-                    vec3 newPosition = position * radius + normal * displacement;
+                    vec3 newPosition = position * radius + normal * displacement + distance;
     
                     //Rotation
                     vec3 p = newPosition.xyz;
@@ -530,6 +533,36 @@ function moonFragmentShader() {
 
     }`;
 
+}
+
+//A function that calculates the length of a vector3
+function length(vec) {
+    distance = Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+
+    if (distance > 15.0) {
+        distance = 15.0;
+    }
+    else if (distance < 1.0) {
+        distance = 1.0;
+    }
+
+    return distance;
+    
+
+} 
+// A function that returns the argument multiplied by negative 2, square rooted and 14.5 added to it
+function numberOfOctaves(arg) {
+    return Math.sqrt(arg)*-2.0 + 14.5;
+}
+
+// A function which return the mass of a sphere with a given radius and density
+function mass(radius, density) {
+    return 4.0 / 3.0 * Math.PI * Math.pow(radius, 3) * density;
+}
+
+// A function which return the radious of an orbit given the mass of the object, the gravitational constant and orbit time
+function radiusOfOrbit(planetMass, moonMass, gravitationalConstant, orbitTime) {
+    return Math.cbrt(Math.pow(orbitTime, 2.0) * gravitationalConstant * (planetMass + moonMass) / (4.0 * Math.pow(Math.PI, 2.0)));
 }
 
 //Create a three.js scene
@@ -600,6 +633,7 @@ var customMoonUniforms = {
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
+    distanceToEarth: { value: 3 },
 
 };
 
@@ -670,7 +704,7 @@ const moonGeometry = new THREE.Mesh(geometry, moonMaterial);
 // Add the sphere mesh to the scene
 scene.add(moonGeometry);
 // Move the sphere next to the earth
-moonGeometry.position.set(0, 2, 0);
+//moonGeometry.position.set(2, 0, 0);
 
 //Add light to the scene
 const light = new THREE.PointLight(0xffffff, 1, 100);
@@ -687,11 +721,13 @@ var earthControls = {
     waveIntensity: 0.0,
     topologicalOffset: 0.0,
     topologicalOffsetStrength: 0.0,
+    density: 5510,
 }
 
 var moonControls = {
     radius: 1737400,
-    numberOfOctaves: 5
+    numberOfOctaves: 5,
+    density: 3346,
 }
 
 
@@ -702,7 +738,7 @@ var earthGUI = gui.addFolder('Earth');
 earthGUI.add(earthControls, 'height', 0.0, 1.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
-earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
+//earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
 earthGUI.add(earthControls, 'waveIntensity', -0.25, 0.25).name(`Flooding`).listen();
 earthGUI.add(earthControls, 'topologicalOffset', 0, 5).name(`Topological Offset`).listen();
@@ -710,29 +746,10 @@ earthGUI.add(earthControls, 'topologicalOffsetStrength', 0, 1).name(`T.O Strengt
 
 var moonGUI = gui.addFolder('Moon');
 moonGUI.add(moonControls, 'radius', 1037400, 2337400).name('Radius').listen();
-moonGUI.add(moonControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
+//moonGUI.add(moonControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 
 
-// Physics functions
-//Constants
-const earthDensity = 5510; // kg/m3
-const earthRotationSpeed = 464; // m/s
 
-// function to calculate the mass of a sphere with desnity and radius as inputs
-function calculateMass(density, radius) {
-    return (4 / 3) * Math.PI * Math.pow(radius, 3) * density;
-}
-
-var earthMass = calculateMass(earthDensity, earthControls.radius);
-
-const earthSpeedConstant = earthMass / earthRotationSpeed;
-
-// function that returns earth's rotationspeed with mass and constant as insputs
-function calculateRotationSpeed(mass, constant) {
-    return constant / mass;
-}
-
-var earthSpeed = calculateRotationSpeed(earthMass, earthSpeedConstant);
 
 
 
@@ -747,14 +764,18 @@ function animate() {
     earthMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     earthMaterial.uniforms.height.value = earthControls.height;
     earthMaterial.uniforms.radius.value = earthControls.radius / 6371000;
-    earthMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    earthMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(camera.position));//earthControls.numberOfOctaves;
     earthMaterial.uniforms.offset.value = earthControls.offset;//(earthControls.moisture / 100) - 1;
     earthMaterial.uniforms.topologicalOffset.value = earthControls.topologicalOffset;
     earthMaterial.uniforms.topologicalOffsetStrength.value = earthControls.topologicalOffsetStrength;
+    //Rotate the earth
+    //earth.rotation.y = ((Date.now())/1000)*2*Math.PI/180;
+
+    //console.log(numberOfOctaves(length(camera.position)));
 
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
-    waterMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    waterMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(camera.position));
     waterMaterial.uniforms.earthHeight.value = earthControls.height;
     waterMaterial.uniforms.offset.value = earthControls.offset;
     waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
@@ -764,12 +785,15 @@ function animate() {
     waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
     waterMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
 
+    //Rotate the water
+    //water.rotation.y = ((Date.now())/1000)*2*Math.PI/180;
+
 
     //Cloads
     cloudMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
     cloudMaterial.uniforms.height.value = earthControls.height + 0.1;
-    cloudMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
-    cloudMaterial.uniforms.numberOfOctaves.value = earthControls.numberOfOctaves;
+    cloudMaterial.uniforms.radius.value = (earthControls.radius / 6371000) + 0.03;
+    cloudMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(camera.position));
     cloudMaterial.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
 
     cloudMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
@@ -777,9 +801,13 @@ function animate() {
     cloudMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
 
     //Moon
-    moonMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
+    //console.log();
+
+    moonMaterial.uniforms.delta.value = (((Date.now() - start)/1000)*2*Math.PI/180)/27;
     moonMaterial.uniforms.radius.value = moonControls.radius / 6371000;
-    moonMaterial.uniforms.numberOfOctaves.value = moonControls.numberOfOctaves;
+    moonMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(moonGeometry.position.clone().sub(camera.position )));
+    moonMaterial.uniforms.distanceToEarth.value = radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60) / Math.pow(10.0, 8.0);
+    console.log(radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60))
     //moonMaterial.uniforms.radius.value
 
     //Render the scene
