@@ -65,6 +65,9 @@ function earthVertexShader() {
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
+
+                    // Recalculate the normals from the gradient
+
     
                     //Rotation
                     vec3 p = newPosition.xyz;
@@ -149,9 +152,11 @@ function waterVertexShader() {
     uniform float numberOfOctaves;
     uniform float waterLevel;
     
-    uniform float cameraPositionX;
-    uniform float cameraPositionY;
-    uniform float cameraPositionZ;
+    uniform vec3 cameraPositionN;
+    uniform vec3 sunPositionN;
+
+    varying vec3 sunDirection;
+    varying vec3 cameraDirection;
 
     varying float heightDisplacement;
 
@@ -216,8 +221,10 @@ function waterVertexShader() {
 
                     heightDisplacement = noise;
 
-                    //waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
-                  
+                    sunDirection = sunPositionN;
+                    cameraDirection = cameraPositionN;
+
+                    
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
     
@@ -232,10 +239,15 @@ function waterVertexShader() {
                     float new_ny = n.y*cos(delta) + n.x*sin(delta);
                     vNormal = vec3(new_nx, new_ny, n.z);
 
+                    
+
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
 
-                    waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), vNormal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
+                    // Recalculate the normals using the gradient of displaced surface
+                    vec3 newNormal = normalize( gradient( newPosition ) );
+
+                    waterOpacity = dot(cameraPositionN, vNormal) / sqrt(cameraPositionN.x * cameraPositionN.x + cameraPositionN.y * cameraPositionN.y + cameraPositionN.z * cameraPositionN.z);
                   
                   }`;
 }
@@ -248,6 +260,9 @@ function waterFragmentShader() {
     varying float waterOpacity;
     varying float distanceToWater;
     uniform float delta;
+    varying vec3 vNormal;
+    varying vec3 sunDirection;
+    varying vec3 cameraDirection;
     
 
     float random( vec3 scale, float seed ){
@@ -261,23 +276,41 @@ function waterFragmentShader() {
     // compose the colour using the UV coordinate
     // and modulate it with the noise like ambient occlusion
     //vec2 tPos = vec2( 0, -110.3 * noise + r );
-    vec4 color = vec4( noise * 10.0 , 1.0, 1.0, 1.0);
+    //vec4 color = vec4( noise * 10.0 , 1.0, 1.0, 1.0);
 
     // set the output colour to the composed colour
     // Palette from: https://www.schemecolor.com/earth-planet-colors.php
     float colorDispConstant = 0.5;
     float colorDisplacement = r * colorDispConstant;
    
-    //if(heightDisplacement <= 0.5) {
+    // implement phong shading using the cameraPositionN and sunDirection
+    vec3 lightDirection = normalize(sunDirection);
+    vec3 normal = normalize(vNormal);
+    float diffuse = max(dot(normal, lightDirection), 0.0);
+    float specular = 0.0;
+    if(diffuse > 0.0) {
+        vec3 viewDirection = normalize(-cameraDirection);
+        vec3 reflectDirection = reflect(-lightDirection, normal);
+        float specAngle = max(dot(viewDirection, reflectDirection), 0.0);
+        specular = pow(specAngle, 32.0);
+    }
+
+    //Apply the resulting phong shading onto a blue surface
+    vec4 color = vec4(0.0, 0.0, 1.0, 1.0);
+    color.rgb *= diffuse;
+    color.rgb += specular;
+    
+
+
     
 
     if(distanceToWater > -0.005) {
-        color = vec4(0.5*heightDisplacement, 0.7*heightDisplacement, 1.0 - 0.2*heightDisplacement, 1.0);
+        //color = vec4(0.5*heightDisplacement, 0.7*heightDisplacement, 1.0 - 0.2*heightDisplacement, 1.0);
         gl_FragColor = vec4( color.rgb, 1.0 );
         gl_FragColor.a = 1.0 + 0.3*waterOpacity;
     }
     else {
-        color = vec4(0.2*heightDisplacement, 0.6*heightDisplacement, 1.0 - 0.6*heightDisplacement, 1.0);
+        //color = vec4(0.2*heightDisplacement, 0.6*heightDisplacement, 1.0 - 0.6*heightDisplacement, 1.0);
         gl_FragColor = vec4( color.rgb, 1.0 );
         gl_FragColor.a = 1.0 + 0.7*waterOpacity;
     }
@@ -619,10 +652,8 @@ var customWaterUniforms = {
     numberOfOctaves: { value: 5 },
     offset: { value: 0 },
     waterLevel: { value: 0 },
-    cameraPositionX: { value: 0 },
-    cameraPositionY: { value: 0 },
-    cameraPositionZ: { value: -5 },
-
+    cameraPositionN: { value: new THREE.Vector3() },
+    sunPositionN: { value: new THREE.Vector3() },
 };
 
 var customCloudUniforms = {
@@ -647,12 +678,18 @@ var customMoonUniforms = {
 
 };
 
+// Create a object for the sun that holds the sun's position, intensity and color
+var sun = {
+    position: new THREE.Vector3(10, 0, 0),
+    intensity: 1.0,
+    color: new THREE.Color(1.0, 1.0, 1.0),
+};
 
 
 //Create a three.js blue sphere geometry with size 1
 //The geometry is described by a radius and number of segments
 const geometry = new THREE.IcosahedronGeometry(1, 90);
-//geometry.drawRange.count = 100000;
+
 //Create a three.js shadermaterialn for the sphere
 var earthMaterial = new THREE.ShaderMaterial({
     uniforms: customEarthUniforms,
@@ -713,13 +750,6 @@ scene.add(cloudGeometry);
 const moonGeometry = new THREE.Mesh(geometry, moonMaterial);
 // Add the sphere mesh to the scene
 scene.add(moonGeometry);
-// Move the sphere next to the earth
-//moonGeometry.position.set(2, 0, 0);
-
-//Add light to the scene
-const light = new THREE.PointLight(0xffffff, 1, 100);
-light.position.set(10, 0, 10);
-scene.add(light);
 
 
 //Controls to be added to the GUI
@@ -748,7 +778,7 @@ var earthGUI = gui.addFolder('Earth');
 earthGUI.add(earthControls, 'height', 0.0, 1.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
-//earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
+
 earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
 earthGUI.add(earthControls, 'waveIntensity', -0.25, 0.25).name(`Flooding`).listen();
 earthGUI.add(earthControls, 'topologicalOffset', 0, 5).name(`Topological Offset`).listen();
@@ -791,12 +821,13 @@ function animate() {
     waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
     waterMaterial.uniforms.height.value = earthControls.waveIntensity;
 
-    waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
-    waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
-    waterMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
+    // Set to new vector which is the inverse of the camera position
+    waterMaterial.uniforms.cameraPositionN.value = camera.position.clone().multiplyScalar(-1);
 
-    //Rotate the water
-    //water.rotation.y = ((Date.now())/1000)*2*Math.PI/180;
+    // Add the sun for the phong shading
+    waterMaterial.uniforms.sunPositionN.value = sun.position.clone().multiplyScalar(-1);
+
+    
 
 
     //Cloads
@@ -817,7 +848,7 @@ function animate() {
     moonMaterial.uniforms.radius.value = moonControls.radius / 6371000;
     moonMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(moonGeometry.position.clone().sub(camera.position )));
     moonMaterial.uniforms.distanceToEarth.value = radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60) / Math.pow(10.0, 8.0);
-    console.log(radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60))
+    //console.log(radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60))
     //moonMaterial.uniforms.radius.value
 
     //Render the scene
