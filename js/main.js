@@ -68,8 +68,8 @@ function earthVertexShader() {
     
                     //Rotation
                     vec3 p = newPosition.xyz;
-                    float new_x = p.x;//*cos(delta) - p.y*sin(delta);
-                    float new_y = p.y;//*cos(delta) + p.x*sin(delta);
+                    float new_x = p.x*cos(delta) - p.y*sin(delta);
+                    float new_y = p.y*cos(delta) + p.x*sin(delta);
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
                   
@@ -156,6 +156,7 @@ function waterVertexShader() {
     varying float heightDisplacement;
 
     varying float waterOpacity;
+    varying vec3 vNormal;
 
                 float turbulence( vec3 p ) {
                 
@@ -215,17 +216,26 @@ function waterVertexShader() {
 
                     heightDisplacement = noise;
 
-                    waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
+                    //waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
     
                     //Rotation
                     vec3 p = newPosition.xyz;
-                    float new_x = p.x;//*cos(delta) - p.y*sin(delta);
-                    float new_y = p.y;//*cos(delta) + p.x*sin(delta);
+                    float new_x = p.x*cos(delta) - p.y*sin(delta);
+                    float new_y = p.y*cos(delta) + p.x*sin(delta);
+
+                    //Rotate the normal vector to match the rotation
+                    vec3 n = normal.xyz;
+                    float new_nx = n.x*cos(delta) - n.y*sin(delta);
+                    float new_ny = n.y*cos(delta) + n.x*sin(delta);
+                    vNormal = vec3(new_nx, new_ny, n.z);
+
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
+
+                    waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), vNormal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
                   
                   }`;
 }
