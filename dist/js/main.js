@@ -748,7 +748,6 @@ var earthGUI = gui.addFolder('Earth');
 earthGUI.add(earthControls, 'height', 0.0, 1.0).name('Height').listen();
 earthGUI.add(earthControls, 'radius', 4371000, 8371000).name('Radius').listen();
 // Add number of octaves to the GUI which takes an int value
-//earthGUI.add(earthControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
 earthGUI.add(earthControls, 'offset', 0, 5).name(`Offset %`).listen();
 earthGUI.add(earthControls, 'waveIntensity', -0.25, 0.25).name(`Flooding`).listen();
 earthGUI.add(earthControls, 'topologicalOffset', 0, 5).name(`Topological Offset`).listen();
@@ -757,11 +756,6 @@ earthGUI.add(earthControls, 'topologicalOffsetStrength', 0, 1).name(`T.O Strengt
 var moonGUI = gui.addFolder('Moon');
 moonGUI.add(moonControls, 'radius', 1037400, 2337400).name('Radius').listen();
 //moonGUI.add(moonControls, 'numberOfOctaves', 1, 10).name('Number of Octaves').listen();
-
-
-
-
-
 
 
 //Render the scene with a animate function
@@ -778,10 +772,6 @@ function animate() {
     earthMaterial.uniforms.offset.value = earthControls.offset;//(earthControls.moisture / 100) - 1;
     earthMaterial.uniforms.topologicalOffset.value = earthControls.topologicalOffset;
     earthMaterial.uniforms.topologicalOffsetStrength.value = earthControls.topologicalOffsetStrength;
-    //Rotate the earth
-    //earth.rotation.y = ((Date.now())/1000)*2*Math.PI/180;
-
-    //console.log(numberOfOctaves(length(camera.position)));
 
     //Water
     waterMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
@@ -794,9 +784,6 @@ function animate() {
     waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
     waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
     waterMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
-
-    //Rotate the water
-    //water.rotation.y = ((Date.now())/1000)*2*Math.PI/180;
 
 
     //Cloads
@@ -811,13 +798,11 @@ function animate() {
     cloudMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
 
     //Moon
-    //console.log();
 
     moonMaterial.uniforms.delta.value = (((Date.now() - start)/1000)*2*Math.PI/180)/27;
     moonMaterial.uniforms.radius.value = moonControls.radius / 6371000;
     moonMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(moonGeometry.position.clone().sub(camera.position )));
     moonMaterial.uniforms.distanceToEarth.value = radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60) / Math.pow(10.0, 8.0);
-    console.log(radiusOfOrbit(mass(earthControls.radius, earthControls.density), mass(moonControls.radius, moonControls.density), 6.674 * Math.pow(10.0, -11.0), 27*24*60*60))
     //moonMaterial.uniforms.radius.value
 
     //Render the scene

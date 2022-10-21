@@ -1,0 +1,22 @@
+{
+  "name": "worldbuild",
+  "version": "1.0.0",
+  "description": "Here's some physics we'll use for the planet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filiparvidsson/WorldBuild.git"
+  },
+  "author": "Filip Arvidsson",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/filiparvidsson/WorldBuild/issues"
+  },
+  "homepage": "https://github.com/filiparvidsson/WorldBuild#readme",
+  "dependencies": {
+    "gh-pages": "^4.0.0"
+  }
+}
