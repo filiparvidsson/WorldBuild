@@ -149,9 +149,7 @@ function waterVertexShader() {
     uniform float numberOfOctaves;
     uniform float waterLevel;
     
-    uniform float cameraPositionX;
-    uniform float cameraPositionY;
-    uniform float cameraPositionZ;
+    uniform vec3 cameraPositionN;
 
     varying float heightDisplacement;
 
@@ -216,7 +214,7 @@ function waterVertexShader() {
 
                     heightDisplacement = noise;
 
-                    //waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
+                    //waterOpacity = dot(cameraPositionN, normal) / length(cameraPositionN);
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -235,7 +233,7 @@ function waterVertexShader() {
     
                     gl_Position = projectionMatrix * modelViewMatrix * vec4( new_x, new_y, p.z, 1.0 );
 
-                    waterOpacity = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), vNormal) / sqrt(cameraPositionX * cameraPositionX + cameraPositionY * cameraPositionY + cameraPositionZ * cameraPositionZ);
+                    waterOpacity = dot(cameraPositionN, vNormal) / length(cameraPositionN);
                   
                   }`;
 }
@@ -316,9 +314,6 @@ function cloudVertexShader() {
     uniform float numberOfOctaves;
     uniform float waterLevel;	
 
-    uniform float cameraPositionX;
-    uniform float cameraPositionY;
-    uniform float cameraPositionZ;
 
     varying float heightDisplacement;
 
@@ -359,7 +354,7 @@ function cloudVertexShader() {
 
                     heightDisplacement = noise;
 
-                    cloudCosAngle = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal);
+                    //cloudCosAngle = dot(vec3(cameraPositionX, cameraPositionY, cameraPositionZ), normal);
                   
                     // move the position along the normal and transform it
                     vec3 newPosition = position * radius + normal * displacement;
@@ -379,7 +374,7 @@ function cloudFragmentShader() {
     return `varying vec2 vUv;
     varying float noise;
     varying float heightDisplacement;
-    varying float cloudCosAngle;
+    //varying float cloudCosAngle;
     uniform float delta;
     
 
@@ -597,8 +592,10 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.25;
 
 
-//Uniforms for the shader
+
 var start = Date.now();
+
+//Uniforms for the shader
 var customEarthUniforms = {
     delta: { value: 0 },
     height: { value: 0 },
@@ -619,9 +616,7 @@ var customWaterUniforms = {
     numberOfOctaves: { value: 5 },
     offset: { value: 0 },
     waterLevel: { value: 0 },
-    cameraPositionX: { value: 0 },
-    cameraPositionY: { value: 0 },
-    cameraPositionZ: { value: -5 },
+    cameraPositionN: { value: new THREE.Vector3() },
 
 };
 
@@ -631,9 +626,7 @@ var customCloudUniforms = {
     radius: { value: 1 },
     numberOfOctaves: { value: 5 },
     waterLevel: { value: 0 },
-    cameraPositionX: { value: 0 },
-    cameraPositionY: { value: 0 },
-    cameraPositionZ: { value: -5 },
+
 
 };
 
@@ -652,7 +645,7 @@ var customMoonUniforms = {
 //Create a three.js blue sphere geometry with size 1
 //The geometry is described by a radius and number of segments
 const geometry = new THREE.IcosahedronGeometry(1, 90);
-//geometry.drawRange.count = 100000;
+
 //Create a three.js shadermaterialn for the sphere
 var earthMaterial = new THREE.ShaderMaterial({
     uniforms: customEarthUniforms,
@@ -683,7 +676,6 @@ var cloudMaterial = new THREE.ShaderMaterial({
     depthTest: true
 });
 // Clouds are transparent and do not write to the depth buffer
-cloudMaterial.transparent = true;
 cloudMaterial.side = THREE.DoubleSide;
 
 var moonMaterial = new THREE.ShaderMaterial({
@@ -780,22 +772,15 @@ function animate() {
     waterMaterial.uniforms.offset.value = earthControls.offset;
     waterMaterial.uniforms.radius.value = (earthControls.radius / 6371000);
     waterMaterial.uniforms.height.value = earthControls.waveIntensity;
-
-    waterMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
-    waterMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
-    waterMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
+    waterMaterial.uniforms.cameraPositionN.value = camera.position.clone().multiplyScalar(-1);
 
 
     //Cloads
     cloudMaterial.uniforms.delta.value = ((Date.now() - start)/1000)*2*Math.PI/180;
-    cloudMaterial.uniforms.height.value = earthControls.height + 0.1;
+    cloudMaterial.uniforms.height.value = earthControls.height + 0.05;
     cloudMaterial.uniforms.radius.value = (earthControls.radius / 6371000) + 0.03;
     cloudMaterial.uniforms.numberOfOctaves.value = numberOfOctaves(length(camera.position));
     cloudMaterial.uniforms.waterLevel.value = (earthControls.moisture / 100) - 1;
-
-    cloudMaterial.uniforms.cameraPositionX.value = -1.0 *camera.position.x;
-    cloudMaterial.uniforms.cameraPositionY.value = -1.0 *camera.position.y;
-    cloudMaterial.uniforms.cameraPositionZ.value = -1.0 *camera.position.z;
 
     //Moon
 
