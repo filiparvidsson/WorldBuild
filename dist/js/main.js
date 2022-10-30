@@ -95,13 +95,12 @@ function earthFragmentShader() {
 
     // compose the colour using the UV coordinate
     // and modulate it with the noise like ambient occlusion
-    //vec2 tPos = vec2( 0, -110.3 * noise + r );
+
     vec4 color = vec4( noise * 10.0 , 1.0, 1.0, 1.0);
 
     // set the output colour to the composed colour
     // Palette from: https://www.schemecolor.com/earth-planet-colors.php
-    // float colorDispConstant = 0.5;
-    // float colorDisplacement = r * colorDispConstant;
+
    
     if(colorDisplacement <= 0.002) {
         color = vec4(0.272 + 0.2*noise, 0.294 + 0.2*noise, 0.267 + 0.2*noise, 1.0);
